@@ -1,5 +1,4 @@
 package game;
-
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
@@ -18,16 +17,6 @@ import java.util.Timer;
 import java.util.TimerTask;
 import javax.swing.border.Border;
 
-interface VisualObject {
-
-    Position getPosition();
-
-    String getImage();
-
-    void setPosition(Position position);
-
-    void setImage(Image img);
-}
 
 public class Game extends JFrame {
 
