@@ -1,4 +1,5 @@
 package game;
+
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
@@ -8,7 +9,9 @@ import java.awt.Image;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
 import javax.swing.JFrame;
@@ -17,10 +20,11 @@ import java.util.Timer;
 import java.util.TimerTask;
 import javax.swing.border.Border;
 
-
-public class Game extends JFrame {
+public class Game extends JFrame implements Runnable {
 
     private static Game instance;
+    private static Thread thread;
+    private static volatile boolean running = false;
 
     public int width;
     public int height;
@@ -28,7 +32,7 @@ public class Game extends JFrame {
     public int cols;
     private int cellSize;
     private JPanel tablero;
-    private JPanel[] paneles;
+    private JPanel[][] paneles;
     private String pathBackground;
     private final Hover hover = new Hover();
     private final Timer timer = new Timer();
@@ -64,7 +68,7 @@ public class Game extends JFrame {
         cols = this.width / this.cellSize;
         this.center = new Position(this.cols / 2, this.rows / 2);
         tablero.setLayout(new GridLayout(rows, cols));
-        paneles = new JPanel[rows * cols];
+        paneles = new JPanel[rows][cols];
 
         this.addPanels();
 
@@ -77,24 +81,67 @@ public class Game extends JFrame {
         this.start();
     }
 
-    private void start() {
-        tick.addTickEvent(1, () -> {
-            this.repaint();
-        });
+    private synchronized void start() {
+        running = true;
+
+        thread = new Thread(this, "Graficos");
+        thread.start();
+    }
+
+    private synchronized void detener() {
+        running = false;
+        try {
+            thread.join();
+        } catch (InterruptedException ex) {
+        }
+    }
+
+    private void actualizar() {
+    }
+
+    private void mostrar() {
+        this.repaint();
+    }
+
+    @Override
+    public void run() {
+        final int NS_POR_SEGUNDO = 1000000000;
+        final byte APS_OBJETIVO = 60;
+        final double NS_POR_ACTUALIZACION = NS_POR_SEGUNDO / APS_OBJETIVO;
+
+        long referenciaActualizacion = System.nanoTime();
+
+        double tiempoTranscurrido;
+        double delta = 0;
+
+        while (running) {
+            final long inicioBucle = System.nanoTime();
+
+            tiempoTranscurrido = inicioBucle - referenciaActualizacion;
+            referenciaActualizacion = inicioBucle;
+
+            delta += tiempoTranscurrido / NS_POR_ACTUALIZACION;
+
+            while (delta >= 1) {
+                this.actualizar();
+                delta--;
+            }
+
+            this.mostrar();
+        }
     }
 
     private void addPanels() {
-        for (int i = 0; i < rows * cols; i++) {
-            int row = i / cols;
-            int col = i % cols;
-
-            JPanel panel = new JPanel();
-            panel.setPreferredSize(new Dimension(this.cellSize, this.cellSize));
-            panel.setName(col + "," + row);
-            panel.setLayout(null);
-            panel.setOpaque(false);
-            this.paneles[i] = panel;
-            tablero.add(panel);
+        for (int i = 0; i < this.paneles.length; i++) {
+            for (int j = 0; j < this.paneles[i].length; j++) {
+                JPanel panel = new JPanel();
+                panel.setPreferredSize(new Dimension(this.cellSize, this.cellSize));
+                panel.setName(j + "," + i);
+                panel.setLayout(null);
+                panel.setOpaque(false);
+                this.paneles[i][j] = panel;
+                tablero.add(panel);
+            }
         }
     }
 
@@ -110,15 +157,17 @@ public class Game extends JFrame {
         return objectsInGame;
     }
 
-    public VisualObject getObjectIn(Position position) {
+    public Set<VisualObject> getObjectIn(Position position) {
+        Set<VisualObject> objects = new HashSet<>();
         for (VisualObject object : objectsInGame) {
             if (object.getPosition() == position) {
-                return object;
+                objects.add(object);
             }
         }
-        return null;
+        return objects;
     }
 
+    /*
     private JPanel getElementIn(Position position) {
         int index = position.getY() * (this.width / this.cellSize) + position.getX();
         Component[] components = this.tablero.getComponents();
@@ -127,6 +176,14 @@ public class Game extends JFrame {
         } else {
             return null;
         }
+    }
+     */
+    private JPanel getElementIn(Position position) {
+        int row = position.getY();
+        int col = position.getX();
+
+        return this.paneles[row][col];
+
     }
 
     public void addVisualIn(VisualObject objeto, Position position) {
@@ -198,8 +255,10 @@ public class Game extends JFrame {
     }
 
     public void removeAllVisuals() {
-        for (JPanel panel : paneles) {
-            panel.removeAll();
+        for (JPanel[] panele : paneles) {
+            for (JPanel jPanel : panele) {
+                jPanel.removeAll();
+            }
         }
     }
 
@@ -208,14 +267,18 @@ public class Game extends JFrame {
     }
 
     public void addBorderInHover() {
-        for (JPanel panel : paneles) {
-            this.hover.borde(panel);
+        for (JPanel[] panele : paneles) {
+            for (JPanel jPanel : panele) {
+                this.hover.borde(jPanel);
+            }
         }
     }
 
     public void addBorderInHover(Color color) {
-        for (JPanel panel : paneles) {
-            this.hover.borde(panel, color);
+        for (JPanel[] panele : paneles) {
+            for (JPanel jPanel : panele) {
+                this.hover.borde(jPanel, color);
+            }
         }
     }
 
@@ -237,15 +300,18 @@ public class Game extends JFrame {
     }
 
     public void whenClicked(Runnable functionToExecute) {
-        for (JPanel panel : paneles) {
-            panel.addMouseListener(new MouseAdapter() {
-                @Override
-                public void mouseClicked(MouseEvent e) {
-                    if (e.getButton() == MouseEvent.BUTTON1) {
-                        functionToExecute.run();
+        for (JPanel[] panele : paneles) {
+            for (JPanel jPanel : panele) {
+                jPanel.addMouseListener(new MouseAdapter() {
+                    @Override
+                    public void mouseClicked(MouseEvent e) {
+                        if (e.getButton() == MouseEvent.BUTTON1) {
+                            //functionToExecute.run();
+                            System.out.println(this);
+                        }
                     }
-                }
-            });
+                });
+            }
         }
     }
 
@@ -274,17 +340,25 @@ public class Game extends JFrame {
         }
     }
 
-    public void whenCollideDo(VisualObject object, Runnable functionToExecute) {
-        this.onTick(200, "whenColiderDo", () -> {
-            if (Game.this.getObjectIn(object.getPosition()) != null) {
-                functionToExecute.run();
+    public void elementInThisPosition() {
+        this.whenClicked(() -> {
+        });
+    }
+
+    public void whenCollideDo(VisualObject object, VisualObject objectInColition, Runnable action) {
+
+        this.onTick(100, "whenColiderDo", () -> {
+            if (object.getPosition().equals(objectInColition.getPosition())) {
+                action.run();
             }
         });
     }
 
     public VisualObject uniqueCollider(VisualObject object) {
-        if (this.getObjectIn(object.getPosition()) != null) {
-            return this.getObjectIn(object.getPosition());
+        for (VisualObject visualObject : objectsInGame) {
+            if (visualObject.getPosition().equals(object.getPosition()) && !visualObject.equals(object)) {
+                return visualObject;
+            }
         }
         return null;
     }
