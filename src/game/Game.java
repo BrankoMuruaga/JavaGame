@@ -1,7 +1,6 @@
 package game;
 
 import java.awt.Color;
-import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.GridLayout;
@@ -36,7 +35,7 @@ public class Game extends JFrame implements Runnable {
     private String pathBackground;
     private final Hover hover = new Hover();
     private final Timer timer = new Timer();
-    private final TickEvent tick = new TickEvent();
+    
     private final List<TickEvent> ticksEvent;
     private final List<VisualObject> objectsInGame;
     private final List<JPanelImage> imagesInGame;
@@ -166,18 +165,7 @@ public class Game extends JFrame implements Runnable {
         }
         return objects;
     }
-
-    /*
-    private JPanel getElementIn(Position position) {
-        int index = position.getY() * (this.width / this.cellSize) + position.getX();
-        Component[] components = this.tablero.getComponents();
-        if (index >= 0 && index < components.length && components[index] instanceof JPanel jPanel) {
-            return jPanel;
-        } else {
-            return null;
-        }
-    }
-     */
+    
     private JPanel getElementIn(Position position) {
         int row = position.getY();
         int col = position.getX();
@@ -325,6 +313,7 @@ public class Game extends JFrame implements Runnable {
     }
 
     public void onTick(int miliseconds, String name, Runnable functionToExecute) {
+        TickEvent tick = new TickEvent();
         tick.setId(name);
         ticksEvent.add(tick);
         tick.addTickEvent(miliseconds, functionToExecute);
