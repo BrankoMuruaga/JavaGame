@@ -25,17 +25,17 @@ public class Game extends JFrame implements Runnable {
     private static Thread thread;
     private static volatile boolean running = false;
 
-    public int width;
-    public int height;
-    public int rows;
-    public int cols;
+    private int width;
+    private int height;
+    private int rows;
+    private int cols;
     private int cellSize;
     private JPanel tablero;
     private JPanel[][] paneles;
     private String pathBackground;
     private final Hover hover = new Hover();
     private final Timer timer = new Timer();
-    
+
     private final List<TickEvent> ticksEvent;
     private final List<VisualObject> objectsInGame;
     private final List<JPanelImage> imagesInGame;
@@ -130,6 +130,14 @@ public class Game extends JFrame implements Runnable {
         }
     }
 
+    public int height() {
+        return rows;
+    }
+
+    public int width() {
+        return cols;
+    }
+
     private void addPanels() {
         for (int i = 0; i < this.paneles.length; i++) {
             for (int j = 0; j < this.paneles[i].length; j++) {
@@ -165,7 +173,7 @@ public class Game extends JFrame implements Runnable {
         }
         return objects;
     }
-    
+
     private JPanel getElementIn(Position position) {
         int row = position.getY();
         int col = position.getX();
@@ -235,9 +243,9 @@ public class Game extends JFrame implements Runnable {
     }
 
     public void removeVisual(VisualObject objeto) {
-        for (JPanelImage images : imagesInGame) {
-            if (images.getId().equals(objeto.toString())) {
-                images.removeImage();
+        for (int i = 0; i < imagesInGame.size(); i++) {
+            if (imagesInGame.get(i).getId().equals(objeto.toString())) {
+                imagesInGame.get(i).removeImage();
             }
         }
     }
@@ -294,8 +302,7 @@ public class Game extends JFrame implements Runnable {
                     @Override
                     public void mouseClicked(MouseEvent e) {
                         if (e.getButton() == MouseEvent.BUTTON1) {
-                            //functionToExecute.run();
-                            System.out.println(this);
+                            functionToExecute.run();
                         }
                     }
                 });
@@ -344,9 +351,9 @@ public class Game extends JFrame implements Runnable {
     }
 
     public VisualObject uniqueCollider(VisualObject object) {
-        for (VisualObject visualObject : objectsInGame) {
-            if (visualObject.getPosition().equals(object.getPosition()) && !visualObject.equals(object)) {
-                return visualObject;
+        for (int i = 0; i < objectsInGame.size(); i++) {
+            if (objectsInGame.get(i).getPosition().equals(object.getPosition()) && !objectsInGame.get(i).equals(object)) {
+                return objectsInGame.get(i);
             }
         }
         return null;
